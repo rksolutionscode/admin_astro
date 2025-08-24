@@ -68,27 +68,30 @@ class Sidebar extends StatelessWidget {
   List<Widget> _buildMenuItems(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 600;
 
+    // Reordered first 6 items
     final List<Map<String, dynamic>> items = [
-      {'icon': Icons.brightness_4, 'label': "ராசி", 'route': '/rasi'},
-      {'icon': Icons.circle, 'label': "பலன்கள்", 'route': '/planet'},
-      {'icon': Icons.star, 'label': "நட்சத்திரங்கள்", 'route': '/star'},
-      {'icon': Icons.feedback, 'label': "பரிந்துரை", 'route': '/suggestion'},
       {
         'icon': Icons.brightness_1_outlined,
         'label': "லக்னம்",
         'route': '/lagnam',
       },
+      {'icon': Icons.circle, 'label': "பாவம்", 'route': '/bhavam'},
       {
         'icon': Icons.feedback,
         'label': "2 சேர்க்கை",
         'route': '/twocombination',
       },
+      {'icon': Icons.star, 'label': "நட்சத்திரங்கள்", 'route': '/star'},
+      {'icon': Icons.brightness_4, 'label': "ராசி", 'route': '/rasi'},
       {
         'icon': Icons.brightness_1_outlined,
         'label': "3 சேர்க்கை",
         'route': '/threecombination',
       },
-      {'icon': Icons.circle, 'label': "பாவம்", 'route': '/bhavam'},
+
+      // Rest of items unchanged
+      {'icon': Icons.circle, 'label': "பலன்கள்", 'route': '/planet'},
+      {'icon': Icons.feedback, 'label': "பரிந்துரை", 'route': '/suggestion'},
       {'icon': Icons.memory, 'label': "ஏ.ஐ", 'route': '/ai'},
       {'icon': Icons.warning, 'label': "தோஷம்", 'route': '/dhosham'},
       {

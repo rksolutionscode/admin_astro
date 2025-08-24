@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:testadm/permission_controller.dart';
-import 'package:testadm/rasi.dart';
+import 'package:http/http.dart' as http;
+import 'package:testadm/lagnam.dart';
+import 'package:testadm/services/auth_controller.dart';
+import 'package:testadm/sugggestion/PrefsHelper.dart';
 
 class Logincredintialpage extends StatefulWidget {
   const Logincredintialpage({super.key});
@@ -12,66 +14,73 @@ class Logincredintialpage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<Logincredintialpage> {
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController adminIdController = TextEditingController();
   final ValueNotifier<bool> isPasswordVisible = ValueNotifier<bool>(false);
+  final authController = Get.put(AuthController());
 
   Future<void> validateAndLogin() async {
-    final String adminId = adminIdController.text.trim();
-    final String username = usernameController.text.trim();
+    print("[Login] Sign in button pressed");
+
+    final String email = emailController.text.trim();
     final String password = passwordController.text;
 
-    if (adminId.isEmpty || username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
       return;
     }
 
     try {
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('accountcreate')
-              .where('adminId', isEqualTo: adminId)
-              .where('username', isEqualTo: username)
-              .where('password', isEqualTo: password)
-              .get();
+      final response = await http.post(
+        Uri.parse('https://astro-j7b4.onrender.com/api/admins/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
 
-      if (snapshot.docs.isNotEmpty) {
-        final userDoc = snapshot.docs.first;
-        final permission = userDoc['permission'] ?? {};
+      print("[Login] Response status code: ${response.statusCode}");
+      print("[Login] Response body: ${response.body}");
 
-        final controller = Get.find<PermissionController>();
-        controller.setPermissions(Map<String, dynamic>.from(permission));
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
 
-        // ✅ Navigate based on access
-        if (controller.getAllowedValues('rasi').isNotEmpty) {
-          Get.offAll(() => AddRasiScreen());
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Access denied: No Rasi permission")),
-          );
-        }
+        if (token == null) throw Exception('Token not found');
+
+        // Save token and adminId automatically from JWT
+
+        // Update authController
+        authController.setToken(token);
+        final adminId = await PrefsHelper.getAdminId();
+        authController.setAdminId(adminId ?? 0);
+
+        print("[Login] Login successful. Token: $token, AdminID: $adminId");
+
+        // Navigate to Lagnam screen
+        Get.offAll(() => Lagnam());
       } else {
+        final errorData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Invalid Admin ID, Username, or Password"),
+          SnackBar(
+            content: Text(
+              'Login failed: ${errorData['message'] ?? 'Unknown error'}',
+            ),
           ),
         );
       }
     } catch (e) {
+      print("[Login] Exception during login: $e");
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   @override
   void dispose() {
-    usernameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
-    adminIdController.dispose();
     isPasswordVisible.dispose();
     super.dispose();
   }
@@ -94,26 +103,18 @@ class _LoginPageState extends State<Logincredintialpage> {
               Image.asset('assets/rka.png', height: 60),
               const SizedBox(height: 10),
               const Text(
-                "Sign in with Admin ID, Username & Password",
+                "Sign in with Email & Password",
                 style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 20),
               TextField(
-                controller: adminIdController,
+                controller: emailController,
                 decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.admin_panel_settings),
-                  labelText: 'Admin ID',
+                  prefixIcon: Icon(Icons.email),
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: usernameController,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.person),
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
-                ),
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 15),
               ValueListenableBuilder<bool>(
@@ -130,9 +131,7 @@ class _LoginPageState extends State<Logincredintialpage> {
                         icon: Icon(
                           value ? Icons.visibility_off : Icons.visibility,
                         ),
-                        onPressed: () {
-                          isPasswordVisible.value = !value;
-                        },
+                        onPressed: () => isPasswordVisible.value = !value,
                       ),
                     ),
                   );

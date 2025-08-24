@@ -15,18 +15,25 @@ import 'package:testadm/logincredintial.dart';
 import 'package:testadm/logindata.dart';
 import 'package:testadm/planet.dart';
 import 'package:testadm/profiledata.dart';
+import 'package:testadm/raasi/add_rasi_screen.dart';
 import 'package:testadm/rasi.dart';
+import 'package:testadm/services/auth_controller.dart';
 import 'package:testadm/star.dart';
+import 'package:testadm/star/star_screen.dart';
 import 'package:testadm/sugggestion/feedbqack.dart';
 import 'package:testadm/threecombination.dart';
 import 'package:testadm/twoplanetconjuction.dart';
 
 class AppRoutes {
   static final routes = [
-     GetPage(name: '/credintial', page: () =>Logincredintial()),
-    GetPage(name: '/rasi', page: () =>AddRasiScreen()),
+    GetPage(name: '/logincredential', page: () => Logincredintialpage()),
+    GetPage(
+      name: '/rasi',
+      page: () => AddRasiScreen(bearerToken: authController.token.value),
+    ),
+
     GetPage(name: '/planet', page: () => PlanetScreen()),
-    GetPage(name: '/star', page: () => StarDisplayScreen()),
+    GetPage(name: '/star', page: () => StarScreen(bearerToken: '',)),
     GetPage(name: '/suggestion', page: () => Suggestion()),
     GetPage(name: '/lagnam', page: () => Lagnam()),
     GetPage(name: '/twocombination', page: () => Twoplanetconjuction()),
@@ -42,7 +49,7 @@ class AppRoutes {
     GetPage(name: '/prasanam', page: () => Prasanam()),
     GetPage(name: '/thantrigam', page: () => Thantrigam()),
     GetPage(name: '/advertisement', page: () => Advertisement()),
-     GetPage(name: '/profile', page: () => ProfileData()),
-      GetPage(name: '/logincredential', page: () => Logincredintialpage()),
+    GetPage(name: '/profile', page: () => ProfileData()),
+    GetPage(name: '/logincredential', page: () => Logincredintialpage()),
   ];
 }

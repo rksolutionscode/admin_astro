@@ -1,28 +1,54 @@
 import 'package:get/get.dart';
 
 class PermissionController extends GetxController {
-  RxMap<String, List<String>> permissions = <String, List<String>>{}.obs;
-
   static PermissionController get to => Get.find<PermissionController>();
 
-  void setPermissions(Map<String, dynamic> permissionMap) {
-    permissions.value = permissionMap.map(
-      (key, value) => MapEntry(key, List<String>.from(value)),
-    );
-  }
+  // Store allowed IDs for each module
+  RxList<int> rasiIds = <int>[].obs;
+  RxList<int> lagnamIds = <int>[].obs;
+  RxList<int> bhavamIds = <int>[].obs;
+  RxList<int> planetIds = <int>[].obs;
+  RxList<int> starIds = <int>[].obs;
+  RxList<int> combinationIds = <int>[].obs;
 
-  bool hasAccess(String type, String value) {
-    return permissions[type]?.contains(value) ?? false;
-  }
+  /// Call this after login
+  void setPermissions(List<dynamic> permissionsList) {
+    // Clear old values
+    rasiIds.clear();
+    lagnamIds.clear();
+    bhavamIds.clear();
+    planetIds.clear();
+    starIds.clear();
+    combinationIds.clear();
 
-  List<String> getAllowedValues(String type) {
-    return permissions[type] ?? [];
-  }
+    for (final perm in permissionsList) {
+      final moduleName = perm['moduleName']?.toString().toLowerCase();
+      final moduleId = perm['moduleId'];
 
-  List<String> get allowedRasis => permissions["rasi"] ?? [];
-  List<String> get allowedLagnams => permissions["lagnam"] ?? [];
-  List<String> get allowedBhavams => permissions["bhavam"] ?? [];
-  List<String> get allowedPlanets => permissions["planet"] ?? [];
-  List<String> get allowedStars => permissions["star"] ?? [];
-  List<String> get allowedCombinations => permissions["combination"] ?? [];
+      if (moduleId is! int) continue;
+
+      switch (moduleName) {
+        case 'raasi':
+          rasiIds.add(moduleId);
+          break;
+        case 'lagnam':
+          lagnamIds.add(moduleId);
+          break;
+        case 'bhavam':
+          bhavamIds.add(moduleId);
+          break;
+        case 'planet':
+          planetIds.add(moduleId);
+          break;
+        case 'star':
+          starIds.add(moduleId);
+          break;
+        case 'combination':
+          combinationIds.add(moduleId);
+          break;
+      }
+    }
+
+    print('Allowed Rasi IDs => $rasiIds');
+  }
 }

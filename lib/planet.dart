@@ -12,17 +12,18 @@ class _PlanetScreenState extends State<PlanetScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController noteController = TextEditingController();
 
-  List<String> allPlanets = [
-    'சூரியன்',
-    'சந்திரன்',
-    'செவ்வாய்',
-    'புதன்',
-    'குரு',
-    'சுக்கிரன்',
-    'சனி',
-    'ராகு',
-    'கேது',
-  ];
+  // map backend planetId → tamil name (Firestore stores the name)
+  final Map<int, String> planetIdToName = {
+    1: 'சூரியன்',
+    2: 'சந்திரன்',
+    3: 'செவ்வாய்',
+    4: 'புதன்',
+    5: 'குரு',
+    6: 'சுக்கிரன்',
+    7: 'சனி',
+    8: 'ராகு',
+    9: 'கேது',
+  };
 
   List<String> planets = [];
   String? selectedPlanet;
@@ -34,12 +35,20 @@ class _PlanetScreenState extends State<PlanetScreen> {
   }
 
   void _filterPlanetsByPermission() {
-    final allowed = PermissionController.to.allowedPlanets;
-    if (allowed.contains("ALL")) {
-      planets = allPlanets;
+    // we now have planetIds => ex:  [1,3,5]
+    final allowedIds = PermissionController.to.planetIds;
+
+    if (allowedIds.isEmpty) {
+      planets = [];
     } else {
-      planets = allPlanets.where((p) => allowed.contains(p)).toList();
+      // convert id to name
+      planets =
+          allowedIds
+              .map((id) => planetIdToName[id])
+              .whereType<String>()
+              .toList();
     }
+
     if (planets.isNotEmpty) {
       selectedPlanet = planets.first;
     }
@@ -137,10 +146,15 @@ class _PlanetScreenState extends State<PlanetScreen> {
                             final planet = selectedPlanet ?? '';
                             final note = noteController.text.trim();
 
-                            if (!PermissionController.to.allowedPlanets
-                                    .contains("ALL") &&
-                                !PermissionController.to.allowedPlanets
-                                    .contains(planet)) {
+                            // convert name→id and check if this id is included
+                            final planetId =
+                                planetIdToName.entries
+                                    .firstWhere((e) => e.value == planet)
+                                    .key;
+
+                            if (!PermissionController.to.planetIds.contains(
+                              planetId,
+                            )) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
@@ -298,11 +312,17 @@ class _PlanetScreenState extends State<PlanetScreen> {
 
                                     final planetName = data['planet'];
 
-                                    final hasPermission =
-                                        PermissionController.to.allowedPlanets
-                                            .contains("ALL") ||
-                                        PermissionController.to.allowedPlanets
-                                            .contains(planetName);
+                                    // again => convert name→id
+                                    final planetId =
+                                        planetIdToName.entries
+                                            .firstWhere(
+                                              (e) => e.value == planetName,
+                                            )
+                                            .key;
+                                    final hasPermission = PermissionController
+                                        .to
+                                        .planetIds
+                                        .contains(planetId);
 
                                     return TableRow(
                                       children: [
