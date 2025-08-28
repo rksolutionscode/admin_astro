@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:testadm/bhavam.dart';
+import 'package:testadm/bhavam/bhavam_screen.dart';
 import 'package:testadm/display/advertisement.dart';
 import 'package:testadm/display/ai.dart';
 import 'package:testadm/display/dhosham.dart';
@@ -10,7 +11,9 @@ import 'package:testadm/display/pariharam.dart';
 import 'package:testadm/display/parvai.dart';
 import 'package:testadm/display/prasanam.dart';
 import 'package:testadm/display/thantrigam.dart';
+import 'package:testadm/giraham/giraham_screen.dart';
 import 'package:testadm/lagnam.dart';
+import 'package:testadm/lagnam/laknam_screen.dart';
 import 'package:testadm/logincredintial.dart';
 import 'package:testadm/logindata.dart';
 import 'package:testadm/planet.dart';
@@ -35,10 +38,10 @@ class AppRoutes {
     GetPage(name: '/planet', page: () => PlanetScreen()),
     GetPage(name: '/star', page: () => StarScreen(bearerToken: '',)),
     GetPage(name: '/suggestion', page: () => Suggestion()),
-    GetPage(name: '/lagnam', page: () => Lagnam()),
-    GetPage(name: '/twocombination', page: () => Twoplanetconjuction()),
+    GetPage(name: '/lagnam', page: () => LaknamScreen()),
+    GetPage(name: '/twocombination', page: () => GirahamScreen()),
     GetPage(name: '/threecombination', page: () => Threecombination()),
-    GetPage(name: '/bhavam', page: () => bhavamScreen()),
+    GetPage(name: '/bhavam', page: () => BhavamScreen()),
     GetPage(name: '/login', page: () => Logindata()),
     GetPage(name: '/ai', page: () => AddAiScreen()),
     GetPage(name: '/dhosham', page: () => Dhosham()),

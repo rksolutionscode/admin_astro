@@ -9,17 +9,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   print("[MAIN] Flutter binding initialized");
 
+  // Initialize controllers
   Get.put(PermissionController());
   print("[MAIN] PermissionController initialized");
 
-  // Initialize AuthController only once
   final authController = Get.put(AuthController());
   print("[MAIN] AuthController initialized");
 
+  // Determine initial route
   String initialRoute = '/logincredential';
-
   try {
-    print("[MAIN] Reading token from SharedPreferences...");
     final token = await PrefsHelper.getToken();
     final adminId = await PrefsHelper.getAdminId() ?? 0;
 
@@ -31,14 +30,11 @@ void main() async {
       authController.setAdminId(adminId);
       initialRoute = '/lagnam';
       print("[MAIN] Token valid, setting initialRoute to /lagnam");
-    } else {
-      print("[MAIN] Token null or empty, staying on /logincredential");
     }
   } catch (e) {
-    print("[MAIN] Error reading token on startup: $e");
+    print("[MAIN] Error reading token: $e");
   }
 
-  print("[MAIN] Running app with initialRoute: $initialRoute");
   runApp(MyApp(initialRoute: initialRoute));
 }
 
