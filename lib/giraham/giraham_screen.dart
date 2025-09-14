@@ -1,32 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:testadm/sugggestion/PrefsHelper.dart';
 import '../sidebar/sidebar.dart';
 import 'giraham_controller.dart';
 import 'giraham_utils.dart';
 
-class GirahamScreen extends StatelessWidget {
+class GirahamScreen extends StatefulWidget {
+  const GirahamScreen({super.key});
+
+  @override
+  State<GirahamScreen> createState() => _GirahamScreenState();
+}
+
+class _GirahamScreenState extends State<GirahamScreen> {
   final GirahamController controller = Get.put(GirahamController());
 
-  GirahamScreen({super.key});
+  @override
+  void initState() {
+    super.initState();
+    _initController();
+  }
 
-  final List<String> allTypes = [
-    'All',
-    'Strong',
-    'Weak',
-    'Positive',
-    'Negative',
-  ];
+  Future<void> _initController() async {
+    final token = await PrefsHelper.getToken();
+    final adminId = await PrefsHelper.getAdminId();
+    print('Fetched token: $token');
+    print('Fetched adminId: $adminId');
+    if (token != null && adminId != null) {
+      print('Calling controller.initData with token and adminId');
+      controller.initData(token, adminId);
+    } else {
+      Get.snackbar(
+        "பிழை",
+        "அங்கீகார தரவு இல்லை. மீண்டும் உள்நுழையவும்.",
+        backgroundColor: Colors.red.shade100,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(16),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    controller.initData('YOUR_BEARER_TOKEN'); // replace with actual token
-
-    final TextEditingController descController = TextEditingController();
-    RxString selectedPlanet = planetList[0].obs;
-    RxString selectedType = allTypes[0].obs;
-
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen = screenWidth >= 600;
+    final isLargeScreen = screenWidth >= 768;
+    final isMediumScreen = screenWidth >= 600;
 
     return Scaffold(
       drawer: isLargeScreen ? null : const Sidebar(),
@@ -39,6 +57,12 @@ class GirahamScreen extends StatelessWidget {
                   "Giraham",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
+                centerTitle: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                ),
                 leading: Builder(
                   builder:
                       (context) => IconButton(
@@ -47,331 +71,616 @@ class GirahamScreen extends StatelessWidget {
                       ),
                 ),
               ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepOrange,
-        onPressed: () {
-          // Optional: implement bulk upload dialog
-        },
-        child: const Icon(Icons.upload_file, color: Colors.white),
-        tooltip: 'Bulk Upload Girahams',
-      ),
+      floatingActionButton:
+          isLargeScreen
+              ? null
+              : FloatingActionButton(
+                backgroundColor: Colors.deepOrange,
+                onPressed: () async {
+                  if (controller.selectedPlanet.value == planetList[0]) {
+                    Get.snackbar(
+                      "பிழை",
+                      "ஒரு குறிப்பிட்ட கிரகம் தேர்வு செய்யவும்.",
+                      backgroundColor: Colors.red.shade100,
+                      borderRadius: 12,
+                      margin: const EdgeInsets.all(16),
+                    );
+                    return;
+                  }
+                  try {
+                    await controller.pickAndUploadFile();
+                  } catch (e) {
+                    Get.snackbar(
+                      "பிழை",
+                      "பதிவு சேர்க்க முடியவில்லை: $e",
+                      backgroundColor: Colors.red.shade100,
+                      borderRadius: 12,
+                      margin: const EdgeInsets.all(16),
+                    );
+                  }
+                },
+                child: const Icon(Icons.upload_file, color: Colors.white),
+                tooltip: 'Upload Giraham Notes',
+              ),
       body: SafeArea(
         child: Row(
           children: [
             if (isLargeScreen)
-              SizedBox(width: screenWidth * 0.18, child: const Sidebar()),
+              Container(
+                width: screenWidth * 0.2,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(2, 0),
+                    ),
+                  ],
+                ),
+                child: const Sidebar(),
+              ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top Card: Dropdowns + Add Button
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 5,
-                      color: Colors.orange.shade50,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (!isLargeScreen) ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Obx(() {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Colors.black12,
-                                              blurRadius: 4,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: DropdownButton<String>(
-                                          isExpanded: true,
-                                          value: selectedPlanet.value,
-                                          onChanged: (val) {
-                                            if (val != null)
-                                              selectedPlanet.value = val;
-                                          },
-                                          items:
-                                              planetList
-                                                  .map(
-                                                    (planet) =>
-                                                        DropdownMenuItem(
-                                                          value: planet,
-                                                          child: Text(planet),
-                                                        ),
-                                                  )
-                                                  .toList(),
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Obx(() {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Colors.black12,
-                                              blurRadius: 4,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: DropdownButton<String>(
-                                          isExpanded: true,
-                                          value: selectedType.value,
-                                          onChanged: (val) {
-                                            if (val != null)
-                                              selectedType.value = val;
-                                          },
-                                          items:
-                                              allTypes
-                                                  .map(
-                                                    (type) => DropdownMenuItem(
-                                                      value: type,
-                                                      child: Text(type),
-                                                    ),
-                                                  )
-                                                  .toList(),
-                                        ),
-                                      );
-                                    }),
-                                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.orange.shade50,
+                      Colors.white,
+                      Colors.orange.shade50,
+                    ],
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(isLargeScreen ? 24.0 : 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      if (isLargeScreen)
+                        Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.deepOrange.shade400,
+                                  Colors.deepOrange.shade600,
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                            ],
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepOrange,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 3,
-                              ),
-                              onPressed: () {
-                                final id = girahamIdFromPlanet(
-                                  selectedPlanet.value,
-                                );
-                                if (id != null &&
-                                    descController.text.trim().isNotEmpty) {
-                                  controller.addGiraham(
-                                    id,
-                                    descController.text.trim(),
-                                  );
-                                  descController.clear();
-                                }
-                              },
-                              child: const Text(
-                                "குறிப்புகள் சேர்க்க",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                          ],
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  "கிரகம் குறிப்புகள்",
+                                  style: TextStyle(
+                                    fontSize: isLargeScreen ? 24 : 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Note Input & DataTable
-                    Expanded(
-                      child: Card(
+                      if (isLargeScreen) const SizedBox(height: 20),
+                      // Filter Section
+                      Card(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Obx(() {
-                            if (controller.girahams.isEmpty) {
-                              return const Center(
-                                child: Text(
-                                  "தேர்வு செய்யப்பட்ட கிரகத்திற்கு தொடர்புடைய தரவுகள் இல்லை",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              );
-                            }
-                            return SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minWidth: MediaQuery.of(context).size.width,
-                                ),
-                                child: DataTable(
-                                  headingRowColor: MaterialStateProperty.all(
-                                    Colors.deepOrange.shade100,
-                                  ),
-                                  columnSpacing: 16,
-                                  dataRowHeight: 50,
-                                  headingTextStyle: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                  columns: const [
-                                    DataColumn(label: Text('பி.நி')),
-                                    DataColumn(label: Text('குறிப்பு')),
-                                    DataColumn(label: Text('செயல்கள்')),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (isLargeScreen)
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        "தேர்வு செய்யப்பட்ட கிரகம்:",
+                                        style: TextStyle(
+                                          fontSize: isLargeScreen ? 16 : 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        "வகை:",
+                                        style: TextStyle(
+                                          fontSize: isLargeScreen ? 16 : 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                  rows:
-                                      controller.girahams.asMap().entries.map((
-                                        entry,
-                                      ) {
-                                        final index = entry.key + 1;
-                                        final item = entry.value;
-                                        return DataRow(
-                                          cells: [
-                                            DataCell(Text(index.toString())),
-                                            DataCell(Text(item.description)),
-                                            DataCell(
-                                              Row(
-                                                children: [
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                      Icons.edit,
-                                                      color: Colors.blue,
-                                                      size: 18,
-                                                    ),
-                                                    onPressed: () {
-                                                      final editController =
-                                                          TextEditingController(
-                                                            text:
-                                                                item.description,
-                                                          );
-                                                      Get.dialog(
-                                                        AlertDialog(
-                                                          title: const Text(
-                                                            'Edit Giraham',
-                                                          ),
-                                                          content: TextField(
-                                                            controller:
-                                                                editController,
-                                                          ),
-                                                          actions: [
-                                                            TextButton(
-                                                              onPressed:
-                                                                  () =>
-                                                                      Get.back(),
-                                                              child: const Text(
-                                                                'Cancel',
-                                                              ),
-                                                            ),
-                                                            ElevatedButton(
-                                                              onPressed: () {
-                                                                controller.updateGiraham(
-                                                                  item.id,
-                                                                  editController
-                                                                      .text
-                                                                      .trim(),
-                                                                );
-                                                                Get.back();
-                                                              },
-                                                              child: const Text(
-                                                                'Save',
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                      Icons.delete,
-                                                      color: Colors.red,
-                                                      size: 18,
-                                                    ),
-                                                    onPressed:
-                                                        () => controller
-                                                            .deleteGiraham(
-                                                              item.id,
-                                                            ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      }).toList(),
+                                ),
+                              if (isLargeScreen) const SizedBox(height: 12),
+                              Obx(() {
+                                if (!controller.hasPermission.value) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text(
+                                      "கிரகம் தேர்வு செய்ய உங்களுக்கு அனுமதி இல்லை",
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  );
+                                }
+                                return isLargeScreen
+                                    ? Row(
+                                      children: [
+                                        // Planet dropdown
+                                        Expanded(
+                                          child: DropdownContainer(
+                                            value:
+                                                controller
+                                                        .selectedPlanet
+                                                        .value
+                                                        .isEmpty
+                                                    ? null
+                                                    : controller
+                                                        .selectedPlanet
+                                                        .value,
+                                            items: controller.accessiblePlanets,
+                                            onChanged: (val) {
+                                              if (val != null) {
+                                                controller
+                                                    .selectedPlanet
+                                                    .value = val;
+                                                controller.fetchGirahams();
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        // Type dropdown
+                                        Expanded(
+                                          child: DropdownContainer(
+                                            value:
+                                                controller.selectedType.value,
+                                            items: controller.allTypes,
+                                            onChanged: (val) {
+                                              if (val != null) {
+                                                controller.selectedType.value =
+                                                    val;
+                                                controller.fetchGirahams();
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                    : Column(
+                                      children: [
+                                        // Planet dropdown
+                                        DropdownContainer(
+                                          value:
+                                              controller
+                                                      .selectedPlanet
+                                                      .value
+                                                      .isEmpty
+                                                  ? null
+                                                  : controller
+                                                      .selectedPlanet
+                                                      .value,
+                                          items: controller.accessiblePlanets,
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              controller.selectedPlanet.value =
+                                                  val;
+                                              controller.fetchGirahams();
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+                                        // Type dropdown
+                                        DropdownContainer(
+                                          value: controller.selectedType.value,
+                                          items: controller.allTypes,
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              controller.selectedType.value =
+                                                  val;
+                                              controller.fetchGirahams();
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    );
+                              }),
+                              const SizedBox(height: 16),
+                              // Add Button
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepOrange,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 3,
+                                ),
+                                onPressed:
+                                    () => controller.showBulkUploadDialog(),
+                                child: const Text(
+                                  "குறிப்புகள் சேர்க்க",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
-                            );
-                          }),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Bottom-right bulk upload button
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrange,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
-                          ),
+                      const SizedBox(height: 20),
+                      // Data Table Section
+                      Expanded(
+                        child: Card(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: Obx(() {
+                              if (controller.isLoading.value) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.deepOrange,
+                                  ),
+                                );
+                              }
+                              if (controller.girahams.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.inbox,
+                                        size: 64,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        "தேர்வு செய்யப்பட்ட கிரகத்திற்கு தொடர்புடைய தரவுகள் இல்லை",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: isLargeScreen ? 18 : 16,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              if (isLargeScreen) {
+                                return SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: DataTable(
+                                    headingRowColor: MaterialStateProperty.all(
+                                      Colors.deepOrange.shade50,
+                                    ),
+                                    headingRowHeight: 60,
+                                    columnSpacing: 24,
+                                    dataRowHeight: 60,
+                                    horizontalMargin: 16,
+                                    headingTextStyle: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: isLargeScreen ? 16 : 14,
+                                      color: Colors.deepOrange.shade800,
+                                    ),
+                                    dataTextStyle: TextStyle(
+                                      fontSize: isLargeScreen ? 15 : 13,
+                                    ),
+                                    columns: [
+                                      DataColumn(
+                                        label: SizedBox(
+                                          width: 60,
+                                          child: Text(
+                                            'பி.நி',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'குறிப்பு',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: SizedBox(
+                                          width: 120,
+                                          child: Text(
+                                            'செயல்கள்',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    rows:
+                                        controller.girahams.asMap().entries.map(
+                                          (entry) {
+                                            final index = entry.key + 1;
+                                            final item = entry.value;
+                                            return DataRow(
+                                              cells: [
+                                                DataCell(
+                                                  Center(
+                                                    child: Text(
+                                                      index.toString(),
+                                                    ),
+                                                  ),
+                                                ),
+                                                DataCell(
+                                                  Container(
+                                                    constraints: BoxConstraints(
+                                                      maxWidth:
+                                                          isLargeScreen
+                                                              ? 600
+                                                              : 200,
+                                                    ),
+                                                    child: Text(
+                                                      item.description,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ),
+                                                DataCell(
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                          color: Colors.blue,
+                                                        ),
+                                                        onPressed:
+                                                            () => controller
+                                                                .showEditDialog(
+                                                                  context,
+                                                                  item,
+                                                                ),
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                        ),
+                                                        onPressed:
+                                                            () => controller
+                                                                .deleteGiraham(
+                                                                  item.id,
+                                                                ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ).toList(),
+                                  ),
+                                );
+                              } else {
+                                return SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minWidth:
+                                          MediaQuery.of(context).size.width,
+                                    ),
+                                    child: DataTable(
+                                      headingRowColor:
+                                          MaterialStateProperty.all(
+                                            Colors.deepOrange.shade100,
+                                          ),
+                                      headingRowHeight: 60,
+                                      columnSpacing: 16,
+                                      dataRowHeight: 50,
+                                      headingTextStyle: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      dataTextStyle: const TextStyle(
+                                        fontSize: 13,
+                                      ),
+                                      columns: const [
+                                        DataColumn(label: Text('பி.நி')),
+                                        DataColumn(label: Text('குறிப்பு')),
+                                        DataColumn(label: Text('செயல்கள்')),
+                                      ],
+                                      rows:
+                                          controller.girahams.asMap().entries.map((
+                                            entry,
+                                          ) {
+                                            final index = entry.key + 1;
+                                            final item = entry.value;
+                                            return DataRow(
+                                              cells: [
+                                                DataCell(
+                                                  Text(index.toString()),
+                                                ),
+                                                DataCell(
+                                                  Container(
+                                                    constraints:
+                                                        const BoxConstraints(
+                                                          maxWidth: 200,
+                                                        ),
+                                                    child: Text(
+                                                      item.description,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ),
+                                                DataCell(
+                                                  Row(
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                          color: Colors.blue,
+                                                          size: 18,
+                                                        ),
+                                                        onPressed:
+                                                            () => controller
+                                                                .showEditDialog(
+                                                                  context,
+                                                                  item,
+                                                                ),
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                          size: 18,
+                                                        ),
+                                                        onPressed:
+                                                            () => controller
+                                                                .deleteGiraham(
+                                                                  item.id,
+                                                                ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }).toList(),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }),
                           ),
                         ),
-                        icon: const Icon(
-                          Icons.upload_file,
-                          color: Colors.white,
-                        ),
-                        label: const Text(
-                          "குறிப்புகள் சேர்க்க",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        onPressed: () {
-                          // Optional: implement bulk upload dialog
-                        },
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      // Bottom Button (only shown on large screens)
+                      if (isLargeScreen)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepOrange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.upload_file),
+                            label: const Text(
+                              "கோப்பு பதிவேற்று",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () async {
+                              if (controller.selectedPlanet.value ==
+                                  planetList[0]) {
+                                Get.snackbar(
+                                  "பிழை",
+                                  "ஒரு குறிப்பிட்ட கிரகம் தேர்வு செய்யவும்.",
+                                  backgroundColor: Colors.red.shade100,
+                                  borderRadius: 12,
+                                  margin: const EdgeInsets.all(16),
+                                );
+                                return;
+                              }
+                              try {
+                                await controller.pickAndUploadFile();
+                              } catch (e) {
+                                Get.snackbar(
+                                  "பிழை",
+                                  "பதிவு சேர்க்க முடியவில்லை: $e",
+                                  backgroundColor: Colors.red.shade100,
+                                  borderRadius: 12,
+                                  margin: const EdgeInsets.all(16),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Reusable dropdown container
+class DropdownContainer extends StatelessWidget {
+  final String? value;
+  final List<String> items;
+  final void Function(String?) onChanged;
+
+  const DropdownContainer({
+    super.key,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.deepOrange.withOpacity(0.3)),
+      ),
+      child: DropdownButton<String>(
+        isExpanded: true,
+        value: value,
+        underline: const SizedBox(),
+        items:
+            items
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+        onChanged: onChanged,
       ),
     );
   }

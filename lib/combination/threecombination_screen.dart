@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../sidebar/sidebar.dart';
-import 'laknam_controller.dart';
-import 'laknam_service.dart';
-import 'laknam_utils.dart';
+import 'join_controller.dart';
+import 'join_service.dart';
 
-class LaknamScreen extends StatelessWidget {
-  final LaknamController controller = Get.put(
-    LaknamController(service: LaknamService()),
+class JoinScreen extends StatelessWidget {
+  final JoinController controller = Get.put(
+    JoinController(service: JoinService()),
   );
 
   @override
@@ -24,7 +23,7 @@ class LaknamScreen extends StatelessWidget {
               : AppBar(
                 backgroundColor: Colors.deepOrange,
                 title: const Text(
-                  "Laknam",
+                  "Join",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 centerTitle: true,
@@ -47,10 +46,10 @@ class LaknamScreen extends StatelessWidget {
               : FloatingActionButton(
                 backgroundColor: Colors.deepOrange,
                 onPressed: () async {
-                  if (controller.selectedLagnam.value == 'அனைத்து லக்னம்') {
+                  if (controller.selectedJoin.value == 'அனைத்து சேர்க்கைகள்') {
                     Get.snackbar(
                       "பிழை",
-                      "ஒரு குறிப்பிட்ட லக்னம் தேர்வு செய்யவும்.",
+                      "ஒரு குறிப்பிட்ட சேர்க்கை தேர்வு செய்யவும்.",
                       backgroundColor: Colors.red.shade100,
                       borderRadius: 12,
                       margin: const EdgeInsets.all(16),
@@ -71,7 +70,7 @@ class LaknamScreen extends StatelessWidget {
                   }
                 },
                 child: const Icon(Icons.upload_file, color: Colors.white),
-                tooltip: 'Upload Laknam Notes',
+                tooltip: 'Upload Join Notes',
               ),
       body: SafeArea(
         child: Row(
@@ -137,7 +136,7 @@ class LaknamScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  "லக்னம் குறிப்புகள்",
+                                  "சேர்க்கை குறிப்புகள்",
                                   style: TextStyle(
                                     fontSize: isLargeScreen ? 24 : 20,
                                     fontWeight: FontWeight.bold,
@@ -170,7 +169,7 @@ class LaknamScreen extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        "தேர்வு செய்யப்பட்ட லக்னம்:",
+                                        "தேர்வு செய்யப்பட்ட சேர்க்கை:",
                                         style: TextStyle(
                                           fontSize: isLargeScreen ? 16 : 14,
                                           fontWeight: FontWeight.w600,
@@ -195,7 +194,7 @@ class LaknamScreen extends StatelessWidget {
                                   return const Padding(
                                     padding: EdgeInsets.all(8.0),
                                     child: Text(
-                                      "லக்னம் தேர்வு செய்ய உங்களுக்கு அனுமதி இல்லை",
+                                      "சேர்க்கை தேர்வு செய்ய உங்களுக்கு அனுமதி இல்லை",
                                       style: TextStyle(color: Colors.red),
                                     ),
                                   );
@@ -204,7 +203,7 @@ class LaknamScreen extends StatelessWidget {
                                 return isLargeScreen
                                     ? Row(
                                       children: [
-                                        // Lagnam dropdown for large screens
+                                        // Join dropdown for large screens
                                         Expanded(
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(
@@ -223,26 +222,24 @@ class LaknamScreen extends StatelessWidget {
                                               isExpanded: true,
                                               underline: const SizedBox(),
                                               value:
-                                                  controller
-                                                      .selectedLagnam
-                                                      .value,
+                                                  controller.selectedJoin.value,
                                               onChanged: (newValue) {
                                                 if (newValue != null) {
                                                   controller
-                                                      .selectedLagnam
+                                                      .selectedJoin
                                                       .value = newValue;
                                                   controller.fetchPosts();
                                                 }
                                               },
                                               items:
-                                                  controller.allowedLagnams
+                                                  controller.allowedJoins
                                                       .map(
                                                         (
-                                                          lagnam,
+                                                          join,
                                                         ) => DropdownMenuItem(
-                                                          value: lagnam,
+                                                          value: join,
                                                           child: Text(
-                                                            lagnam,
+                                                            join,
                                                             style:
                                                                 const TextStyle(
                                                                   fontSize: 14,
@@ -305,7 +302,7 @@ class LaknamScreen extends StatelessWidget {
                                     )
                                     : Column(
                                       children: [
-                                        // Lagnam dropdown for small screens
+                                        // Join dropdown for small screens
                                         Container(
                                           width: double.infinity,
                                           padding: const EdgeInsets.symmetric(
@@ -325,24 +322,23 @@ class LaknamScreen extends StatelessWidget {
                                             isExpanded: true,
                                             underline: const SizedBox(),
                                             value:
-                                                controller.selectedLagnam.value,
+                                                controller.selectedJoin.value,
                                             onChanged: (newValue) {
                                               if (newValue != null) {
-                                                controller
-                                                    .selectedLagnam
-                                                    .value = newValue;
+                                                controller.selectedJoin.value =
+                                                    newValue;
                                                 controller.fetchPosts();
                                               }
                                             },
                                             items:
-                                                controller.allowedLagnams
+                                                controller.allowedJoins
                                                     .map(
                                                       (
-                                                        lagnam,
+                                                        join,
                                                       ) => DropdownMenuItem(
-                                                        value: lagnam,
+                                                        value: join,
                                                         child: Text(
-                                                          lagnam,
+                                                          join,
                                                           style:
                                                               const TextStyle(
                                                                 fontSize: 14,
@@ -462,7 +458,7 @@ class LaknamScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
-                                        "தேர்வு செய்யப்பட்ட லக்னத்திற்கு தொடர்புடைய தரவுகள் இல்லை",
+                                        "தேர்வு செய்யப்பட்ட சேர்க்கைக்கு தொடர்புடைய தரவுகள் இல்லை",
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontSize: isLargeScreen ? 18 : 16,
@@ -545,7 +541,7 @@ class LaknamScreen extends StatelessWidget {
                                                             : 200,
                                                   ),
                                                   child: Text(
-                                                    post.content,
+                                                    post.description,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 2,
@@ -577,7 +573,8 @@ class LaknamScreen extends StatelessWidget {
                                                       onPressed:
                                                           () => controller
                                                               .deletePost(
-                                                                post.postId,
+                                                                post.id
+                                                                    .toString(),
                                                               ),
                                                     ),
                                                   ],
@@ -633,7 +630,7 @@ class LaknamScreen extends StatelessWidget {
                                                           maxWidth: 200,
                                                         ),
                                                     child: Text(
-                                                      post.content,
+                                                      post.description,
                                                       overflow:
                                                           TextOverflow.ellipsis,
                                                       maxLines: 2,
@@ -665,7 +662,8 @@ class LaknamScreen extends StatelessWidget {
                                                         onPressed:
                                                             () => controller
                                                                 .deletePost(
-                                                                  post.postId,
+                                                                  post.id
+                                                                      .toString(),
                                                                 ),
                                                       ),
                                                     ],
@@ -685,7 +683,6 @@ class LaknamScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // Bottom Button (only shown on large screens)
-                     // Bottom Button (only shown on large screens)
                       if (isLargeScreen)
                         Align(
                           alignment: Alignment.centerRight,
@@ -703,15 +700,15 @@ class LaknamScreen extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.upload_file),
                             label: const Text(
-                              "கோப்பு பதிவேற்று", // File Upload
+                              "கோப்பு பதிவேற்று",
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             onPressed: () async {
-                              if (controller.selectedLagnam.value ==
-                                  'அனைத்து லக்னம்') {
+                              if (controller.selectedJoin.value ==
+                                  'அனைத்து சேர்க்கைகள்') {
                                 Get.snackbar(
                                   "பிழை",
-                                  "ஒரு குறிப்பிட்ட லக்னம் தேர்வு செய்யவும்.",
+                                  "ஒரு குறிப்பிட்ட சேர்க்கை தேர்வு செய்யவும்.",
                                   backgroundColor: Colors.red.shade100,
                                   borderRadius: 12,
                                   margin: const EdgeInsets.all(16),
@@ -720,8 +717,7 @@ class LaknamScreen extends StatelessWidget {
                               }
 
                               try {
-                                await controller
-                                    .pickAndUploadFile(); // 📂 direct file upload
+                                await controller.pickAndUploadFile();
                               } catch (e) {
                                 Get.snackbar(
                                   "பிழை",
@@ -734,7 +730,6 @@ class LaknamScreen extends StatelessWidget {
                             },
                           ),
                         ),
-
                     ],
                   ),
                 ),

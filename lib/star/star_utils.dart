@@ -1,5 +1,5 @@
 final List<String> rasis = [
-  "அனைத்து நட்சத்திரங்கள்", // ID = 0 (not real, just placeholder)
+  "அனைத்து நட்சத்திரங்கள்", // ID = 0 (placeholder)
   "அஷ்வினி", // ID = 1
   "பரணி", // ID = 2
   "கார்த்திகை", // ID = 3
@@ -28,3 +28,16 @@ final List<String> rasis = [
   "உத்திரட்டாதி", // ID = 26
   "ரேவதி", // ID = 27
 ];
+
+/// Name → ID
+int? starNameToId(String name) {
+  final index = rasis.indexOf(name);
+  if (index == -1) return null;
+  return index; // index is the ID
+}
+
+/// ID → Name
+String? starIdToName(int id) {
+  if (id < 0 || id >= rasis.length) return null;
+  return rasis[id];
+}

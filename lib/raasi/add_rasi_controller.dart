@@ -1,14 +1,17 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:csv/csv.dart';
-import 'package:testadm/permission_controller.dart';
+import 'package:testadm/sugggestion/PrefsHelper.dart';
 import 'rasi_model.dart';
 import 'rasi_service.dart';
 import 'rasi_utils.dart';
 
 class AddRasiController extends GetxController {
+    var isLoading = false.obs; // ✅ Add this
+
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
   RxList<String> rasis = <String>[].obs;
@@ -65,49 +68,62 @@ class AddRasiController extends GetxController {
   }
   // ⇧ END OF UPDATED BLOCK
 
-  void initData(String token) {
+ Future<void> initData({String? token, int? adminId}) async {
+    // Prevent re-initialization
     if (bearerToken != null) return;
-    bearerToken = token;
-    print("Bearer token initialized: $bearerToken");
 
-    _filterRasisByPermission();
-    fetchRaasiPosts();
-  }
+    // ✅ If token/adminId not provided, get from PrefsHelper
+    token ??= await PrefsHelper.getToken();
+    adminId ??= await PrefsHelper.getAdminId();
 
-  void _filterRasisByPermission() {
-    // This contains the moduleIds -> example:   [2,4]
-    final allowedRasiIds = PermissionController.to.rasiIds;
-    print("Allowed Rasi Ids from PermissionController: $allowedRasiIds");
-
-    if (allowedRasiIds.isEmpty) {
-      rasis.value = allRasis;
+    if (token == null || adminId == null) {
+      print("⚠️ Missing token or adminId. Please login again.");
+      showSnackBar("உள்நுழைவு தரவு இல்லை. மீண்டும் முயற்சிக்கவும்.");
       return;
     }
 
-    // Convert allowed ids → names
-    final List<String> filteredNames =
-        allowedRasiIds
-            .map((id) => rasiIdToName(id))
-            .whereType<String>()
-            .toList();
+    bearerToken = token;
+    print("Bearer token initialized: $bearerToken");
 
-    // Add "எல்லா ராசிகள்" at the top
-    rasis.value = ['எல்லா ராசிகள்', ...filteredNames];
+    // Fetch allowed Raasi IDs
+    try {
+      final allowedIds = await RasiService.fetchAdminPermissions(
+        adminId,
+        token,
+      );
 
-    print("Filtered rasis for dropdown: $rasis");
+      final allowedRasis =
+          allowedIds.map((id) => rasiIdToName(id)).whereType<String>().toList();
+
+      rasis.assignAll(allowedRasis); // only assign allowed rasis
+      print("Allowed Rasis for Admin $adminId: $allowedRasis");
+
+      // ✅ Reset selectedRasi safely
+      if (rasis.isNotEmpty) {
+        selectedRasi.value = rasis.first; // default to first allowed
+      } else {
+        selectedRasi.value = ''; // avoid dropdown crash
+      }
+    } catch (e) {
+      print("Error fetching permissions: $e");
+      showSnackBar("அனுமதிகளை பெற முடியவில்லை: $e");
+    }
+
+    // Load posts after setting allowed rasis
+    await fetchRaasiPosts();
   }
+
+
+
 
   Future<void> fetchRaasiPosts() async {
     if (bearerToken == null) return;
 
     try {
-      final adminId = await _getAdminId();
-      final posts = await RasiService.fetchRasiPostsByAdmin(
-        bearerToken!,
-        adminId,
-      );
+      // No need to get adminId
+      final posts = await RasiService.fetchRasiPostsByAdmin(bearerToken!);
       raasiPosts.assignAll(posts);
-      print("Fetched ${posts.length} Rasi posts (for admin $adminId)");
+      print("Fetched ${posts.length} Rasi posts");
     } catch (e) {
       print("Error fetching posts: $e");
       showSnackBar("தரவுகளைப் பெற முடியவில்லை: $e");
@@ -162,40 +178,73 @@ class AddRasiController extends GetxController {
     }
   }
 
-  Future<void> uploadCsvFile() async {
+  Future<void> pickAndUploadFile() async {
+    print("[RasiController] 📂 Opening file picker for bulk upload...");
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['csv'],
+      allowedExtensions: ['xlsx', 'xls', 'csv'],
     );
 
-    if (result == null) {
-      print("CSV file not selected");
-      showSnackBar("CSV கோப்பு தேர்வு செய்யவில்லை.");
-      return;
-    }
+    if (result != null && result.files.isNotEmpty) {
+      final pickedFile = result.files.single;
+      print("[RasiController] ✅ File picked: ${pickedFile.name}");
+      print("[RasiController] File size: ${pickedFile.size} bytes");
+      print("[RasiController] File extension: ${pickedFile.extension}");
 
-    final file = File(result.files.single.path!);
-    final rawData = await file.readAsString();
-    final csvData = CsvToListConverter().convert(rawData);
-    print("CSV data read: ${csvData.length} rows");
+      final raasiId = rasiNameToId(selectedRasi.value)!; // ✅ fixed
+      print(
+        "[RasiController] Selected Raasi: ${selectedRasi.value} -> ID: $raasiId",
+      );
 
-    for (var row in csvData) {
-      if (row.length >= 3) {
-        final rasi = row[0].toString().trim();
-        final note = row[1].toString().trim();
-        final type = row[2].toString().trim();
-        print("Processing CSV row -> rasi: $rasi, type: $type, note: $note");
+      try {
+        print("[RasiController] 🚀 Uploading file to server...");
 
-        if (rasi.isNotEmpty && note.isNotEmpty && allTypes.contains(type)) {
-          await addRaasiPost(rasi, note, type);
+        if (kIsWeb) {
+          print("[RasiController] Running on Web platform");
+
+          if (pickedFile.bytes == null) {
+            print("[RasiController] ❌ No file bytes found for Web");
+            throw Exception("No file bytes found (Web upload failed).");
+          }
+
+          print("[RasiController] Bytes length: ${pickedFile.bytes!.length}");
+          await RasiService.bulkUploadRaasiFile(pickedFile, raasiId); // ✅ fixed
+          print(
+            "[RasiController] 🌐 Web file uploaded successfully: ${pickedFile.name}",
+          );
+        } else {
+          print("[RasiController] Running on Mobile/Desktop platform");
+          final file = File(pickedFile.path!);
+          print("[RasiController] File path: ${file.path}");
+
+          await RasiService.bulkUploadRaasiFile(file, raasiId); // ✅ fixed
+          print("[RasiController] 📤 File uploaded successfully: ${file.path}");
         }
-      }
-    }
 
-    print("CSV upload completed");
-    showSnackBar("CSV கோப்பு வெற்றிகரமாக பதிவேற்றப்பட்டது.");
-    await fetchRaasiPosts();
+        print("[RasiController] 🔄 Refreshing Raasi posts after upload...");
+        await fetchRaasiPosts(); // ✅ fixed
+
+        print("[RasiController] ✅ Upload & refresh completed successfully");
+        Get.snackbar(
+          "வெற்றி",
+          "${selectedRasi.value} க்கு அனைத்து குறிப்புகளும் சேர்க்கப்பட்டன.",
+          backgroundColor: Colors.green.shade100,
+        );
+      } catch (e) {
+        print("[RasiController] ❌ Bulk upload failed with error: $e");
+        Get.snackbar(
+          "பிழை",
+          "பதிவு சேர்க்க முடியவில்லை: $e",
+          backgroundColor: Colors.red.shade100,
+        );
+      }
+    } else {
+      print("[RasiController] ⚠️ No file selected by user");
+    }
   }
+
+
 
   Future<void> deleteRaasiPost(int postId) async {
     print("Deleting postId: $postId");

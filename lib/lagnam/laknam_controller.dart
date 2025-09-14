@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // for kIsWeb
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:testadm/sugggestion/PrefsHelper.dart';
 import 'laknam_model.dart';
 import 'laknam_service.dart';
 import 'laknam_utils.dart';
@@ -8,11 +13,16 @@ class LaknamController extends GetxController {
   final LaknamService service;
 
   LaknamController({required this.service});
+  var isLoading = false.obs; // <-- Add this
 
   var posts = <LaknamPost>[].obs;
 
   // Selected Lagnam
   final selectedLagnam = 'அனைத்து லக்னம்'.obs;
+
+  var hasPermission = false.obs;
+
+  var allowedLagnams = <String>[].obs; // Only the ones admin has permission for
 
   // Selected Type
   final selectedType = 'All'.obs;
@@ -48,24 +58,144 @@ class LaknamController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchPosts();
+
+    // Fetch admin ID dynamically
+    PrefsHelper.getAdminId().then((adminId) {
+      if (adminId != null) {
+        fetchAdminPermissions(adminId);
+        ever(selectedType, (_) => fetchPosts());
+        ever(selectedLagnam, (_) => fetchPosts());
+        fetchPosts();
+      } else {
+        hasPermission.value = false;
+        Get.snackbar("Error", "Admin ID not found. Please log in.");
+      }
+    });
+  }
+
+  @override
+  void onClose() {
+    noteController.dispose();
+    super.onClose();
+  }
+
+  Future<void> fetchAdminPermissions(int adminId) async {
+    try {
+      final moduleIds = await service.fetchAdminPermissions(adminId);
+
+      // Map moduleId to Lagnam name
+      final Map<int, String> idToLagnam = {
+        1: 'மேஷம் லக்னம்',
+        2: 'ரிஷபம் லக்னம்',
+        3: 'மிதுனம் லக்னம்',
+        4: 'கடகம் லக்னம்',
+        5: 'சிம்மம் லக்னம்',
+        6: 'கன்னி லக்னம்',
+        7: 'துலாம் லக்னம்',
+        8: 'விருச்சிகம் லக்னம்',
+        9: 'தனுசு லக்னம்',
+        10: 'மகரம் லக்னம்',
+        11: 'கும்பம் லக்னம்',
+        12: 'மீனம் லக்னம்',
+      };
+
+      allowedLagnams.value =
+          moduleIds.map((id) => idToLagnam[id]).whereType<String>().toList();
+
+      hasPermission.value = allowedLagnams.isNotEmpty;
+
+      // Set default selected Lagnam if available
+      if (hasPermission.value) {
+        selectedLagnam.value = allowedLagnams.first;
+      }
+    } catch (e) {
+      print("Permission fetch error: $e");
+      hasPermission.value = false;
+    }
+  }
+
+  Future<void> pickAndUploadFile() async {
+    print("[LaknamController] Opening file picker for bulk upload...");
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xls', 'csv'],
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final pickedFile = result.files.single;
+      final laknamId = _laknamNameToId[selectedLagnam.value]!;
+
+      print(
+        "[LaknamController] Selected Laknam: ${selectedLagnam.value} -> ID: $laknamId",
+      );
+
+      try {
+        print("[LaknamController] Uploading file...");
+
+        if (kIsWeb) {
+          // Web: use bytes
+          if (pickedFile.bytes == null) {
+            throw Exception("No file bytes found (Web upload failed).");
+          }
+          await service.bulkUploadLaknamFile(
+            pickedFile,
+            laknamId,
+          ); // service method updated for bytes
+          print(
+            "[LaknamController] Web file uploaded successfully: ${pickedFile.name}",
+          );
+        } else {
+          // Mobile/Desktop: use File
+          final file = File(pickedFile.path!);
+          await service.bulkUploadLaknamFile(file, laknamId);
+          print("[LaknamController] File uploaded successfully: ${file.path}");
+        }
+
+        fetchPosts();
+        Get.snackbar(
+          "வெற்றி",
+          "${selectedLagnam.value} க்கு அனைத்து குறிப்புகளும் சேர்க்கப்பட்டன.",
+          backgroundColor: Colors.green.shade100,
+        );
+      } catch (e) {
+        print("[LaknamController] Bulk upload failed: $e");
+        Get.snackbar(
+          "பிழை",
+          "பதிவு சேர்க்க முடியவில்லை: $e",
+          backgroundColor: Colors.red.shade100,
+        );
+      }
+    } else {
+      print("[LaknamController] No file selected");
+    }
+  }
+
+  Future<void> checkPermission(int adminId) async {
+    try {
+      final permissions = await service.fetchAdminPermissions(adminId);
+      // Assuming moduleId 1 corresponds to Laknam module, adjust if needed
+      hasPermission.value = permissions.contains(1);
+    } catch (e) {
+      print("Permission check failed: $e");
+      hasPermission.value = false;
+    }
   }
 
   /// Fetch posts created by the logged-in admin
-  Future<void> fetchPosts() async {
+  Future<void> fetchPosts({bool filterBySelected = true}) async {
     try {
-      // Fetch only admin posts from backend
       var result = await service.fetchPostsByAdmin();
 
-      // Filter by selected Lagnam if not "All"
-      if (selectedLagnam.value != 'அனைத்து லக்னம்') {
+      if (filterBySelected && selectedLagnam.value != 'அனைத்து லக்னம்') {
         final laknamId = _laknamNameToId[selectedLagnam.value]!;
         result = result.where((p) => p.laknamId == laknamId).toList();
       }
 
-      // Filter by type if not "All"
       if (selectedType.value != 'All') {
-        result = result.where((p) => p.type == selectedType.value).toList();
+        final typeFilter = selectedType.value.toLowerCase();
+        result =
+            result.where((p) => p.type.toLowerCase() == typeFilter).toList();
       }
 
       posts.value = result;

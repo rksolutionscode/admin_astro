@@ -3,7 +3,7 @@ class GirahamModel {
   final int girahamId;
   final int adminId;
   final String description;
-  final String? type; // New field
+  final String type; // make it non-nullable
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -12,7 +12,7 @@ class GirahamModel {
     required this.girahamId,
     required this.adminId,
     required this.description,
-    this.type,
+    required this.type,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -23,7 +23,7 @@ class GirahamModel {
       girahamId: json['girahamId'],
       adminId: json['adminId'],
       description: json['description'],
-      type: json['type'], // Assign type from JSON (may be null)
+      type: json['type'] ?? "Positive", // default Positive if null
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );
@@ -34,7 +34,7 @@ class GirahamModel {
     'girahamId': girahamId,
     'adminId': adminId,
     'description': description,
-    'type': type, // Include type
+    'type': type,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
